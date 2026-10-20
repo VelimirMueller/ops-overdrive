@@ -31,7 +31,7 @@
       { "lead": "Trace", "text": "`overdrive trace` reads a finished session: tool calls, wall time and token counts per tool." }
     ] },
     { "key": "start", "type": "terminal", "title": "QUICK START", "lines": [
-      "$ git clone https://github.com/VelimirMueller/overdrive && cd overdrive",
+      "$ git clone https://github.com/VelimirMueller/ops-overdrive && cd ops-overdrive",
       "$ claude plugin marketplace add ./mods",
       "$ claude plugin install overdrive-tools@overdrive-mods",
       "$ claude plugin install overdrive-tabs@overdrive-mods",
@@ -100,7 +100,7 @@
       "divider:what", "features", "what",
       "divider:start", "start",
       { "details": "links", "chip": 4, "code": [
-        ["bash", "git clone https://github.com/VelimirMueller/overdrive && cd overdrive\nclaude plugin marketplace add ./mods\nclaude plugin install overdrive-tools@overdrive-mods\nclaude plugin install overdrive-tabs@overdrive-mods"]
+        ["bash", "git clone https://github.com/VelimirMueller/ops-overdrive && cd ops-overdrive\nclaude plugin marketplace add ./mods\nclaude plugin install overdrive-tools@overdrive-mods\nclaude plugin install overdrive-tabs@overdrive-mods"]
       ] },
       "extras", "needs",
       "divider:how", "flow", "lock",
