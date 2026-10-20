@@ -1,0 +1,116 @@
+{
+  "group": "ops",
+  "version": "v2",
+  "dividers": [
+    { "key": "what",   "index": "01", "title": "WHAT IT DOES", "caption": "ONE RIG. ONE VERSION. ONE SERPENT.", "art": "strip-ops-1" },
+    { "key": "start",  "index": "02", "title": "QUICK START",  "caption": "TWO MODS IN FOUR COMMANDS.",        "art": "strip-ops-2" },
+    { "key": "how",    "index": "03", "title": "HOW IT WORKS", "caption": "DRAWINGS CHANGE. RECORDS DO NOT.",  "art": "strip-ops-3" },
+    { "key": "usage",  "index": "04", "title": "USAGE",        "caption": "EVERY COMMAND, ONE LINE EACH.",     "art": "strip-ops-4" },
+    { "key": "status", "index": "05", "title": "STATUS",       "caption": "STABLE ON TOP OF AN EARLY API.",    "art": "strip-ops-5" }
+  ],
+  "panels": [
+    { "key": "lead", "type": "lead", "title": "ABOUT",
+      "text": "Overdrive treats a local Claude Code setup as **one versioned tool**. It adds a loud terminal look and two Claude Code mods: a tab band above the prompt and colored, foldable tool rows." },
+    { "key": "stats", "type": "stats", "items": [
+      { "value": "11", "label": "CLI COMMANDS" },
+      { "value": "2",  "label": "CLAUDE CODE MODS" },
+      { "value": "5",  "label": "STATUSLINE ROWS" },
+      { "value": "68", "label": "MOD TESTS" }
+    ] },
+    { "key": "features", "type": "cards", "items": [
+      { "title": "VERSION", "text": "The overdrive CLI versions ~/.claude as a local git repo and pins every tool repo by SHA in one lock file." },
+      { "title": "MODS",    "text": "overdrive-tabs draws a tab band above the prompt. overdrive-tools colors every tool row and folds it." },
+      { "title": "LOOK",    "text": "An output style, a session banner and a five-row statusline share one neon palette and one art language." }
+    ] },
+    { "key": "what", "type": "notes", "title": "WHAT IT DOES", "columns": 2, "items": [
+      { "lead": "One version for the setup", "text": "`VERSION` holds the semver, `overdrive.lock` pins components by SHA, and every version keeps its own log." },
+      { "lead": "Drift on session start", "text": "A SessionStart hook checks the pins in under 150 ms and records drift in the background." },
+      { "lead": "Colored tool rows", "text": "`INF` cyan for reads, `CHG` magenta for changes, `RUN` yellow for shell and agents. Click a tag to fold or open the row." },
+      { "lead": "Tab band", "text": "Code, tickets, Claude usage, overdrive state and a serpent pet, in a pink box above the prompt." },
+      { "lead": "Session log", "text": "Every tool appends INFO, WARN and CRITICAL lines to one crash-safe log per Claude session." },
+      { "lead": "Trace", "text": "`overdrive trace` reads a finished session: tool calls, wall time and token counts per tool." }
+    ] },
+    { "key": "start", "type": "terminal", "title": "QUICK START", "lines": [
+      "$ git clone https://github.com/VelimirMueller/overdrive && cd overdrive",
+      "$ claude plugin marketplace add ./mods",
+      "$ claude plugin install overdrive-tools@overdrive-mods",
+      "$ claude plugin install overdrive-tabs@overdrive-mods",
+      "# then, inside Claude Code: /tools folded"
+    ] },
+    { "key": "extras", "type": "commands", "title": "THE REST IS OPT-IN", "rows": [
+      { "cmd": "output-styles/overdrive.md", "text": "Copy to `~/.claude/output-styles/`, then select it under Output style in `/config`." },
+      { "cmd": "statusline-command.sh", "text": "Point `statusLine.command` in `~/.claude/settings.json` at it. Chips for tools you lack stay empty." },
+      { "cmd": "hooks/overdrive-banner.sh", "text": "A SessionStart hook: the pink banner and the frame reminder." },
+      { "cmd": "tools/overdrive/overdrive", "text": "Link into your `PATH`. It expects `~/.claude` to be a local git repo." }
+    ] },
+    { "key": "needs", "type": "commands", "title": "REQUIREMENTS", "rows": [
+      { "cmd": "claude", "text": "Claude Code with function hooks (early access). Built on 2.1.303." },
+      { "cmd": "bash · git · python3", "text": "For the CLI, the hooks and `overdrive trace`." },
+      { "cmd": "rig tools", "text": "Optional. The tickets tab reads tix and code-context and shows empty rows without them." }
+    ] },
+    { "key": "flow", "type": "flow", "nodes": [
+      { "title": "TOOL CALL", "sub": "Read · Edit · Bash · MCP" },
+      { "title": "OVERDRIVE-TOOLS", "sub": "ui.render on ToolUse", "hot": true },
+      { "title": "TRANSCRIPT ROW", "sub": "tag · color · fold" }
+    ], "caption": "The mod wraps the engine's own drawing. The stored row and the model's context do not change." },
+    { "key": "lock", "type": "flow", "title": "THE SETUP AS ONE TOOL", "nodes": [
+      { "title": "~/.claude", "sub": "local git repo, no remote" },
+      { "title": "overdrive snapshot", "sub": "lock + commit", "hot": true },
+      { "title": "overdrive.lock", "sub": "tool repos by SHA" }
+    ] },
+    { "key": "cmds", "type": "commands", "title": "CLI", "rows": [
+      { "cmd": "overdrive", "text": "Status: version, uncommitted changes, lock drift. Read-only." },
+      { "cmd": "overdrive snapshot [--if-drift] [\"msg\"]", "text": "Regenerate the lock and commit if anything changed." },
+      { "cmd": "overdrive bump patch|minor|major \"msg\"", "text": "New version, new log, commit and tag." },
+      { "cmd": "overdrive history · changelog [N]", "text": "Versions with their messages and log lines." },
+      { "cmd": "overdrive trace [<session>|--last]", "text": "Tool calls, wall time and tokens of one session." },
+      { "cmd": "overdrive catalog · limits", "text": "Every tool with its glyph and version. Known limits and caps." },
+      { "cmd": "overdrive session show|path|list|rm", "text": "This session's log." }
+    ] },
+    { "key": "tools", "type": "commands", "title": "MOD COMMANDS", "rows": [
+      { "cmd": "/tools folded", "text": "Default. Every finished tool row starts folded." },
+      { "cmd": "/tools changes", "text": "Fold info rows. Keep changes and runs open." },
+      { "cmd": "/tools all", "text": "Open every row. Bare `/tools` toggles folded and all." },
+      { "cmd": "click a tag", "text": "Fold or open that one row. Needs the fullscreen layout." }
+    ] },
+    { "key": "status", "type": "status", "rows": [
+      { "label": "overdrive CLI and lock format", "value": "stable", "state": "ok" },
+      { "label": "Mod tests", "value": "claude plugin test, 68 pass", "state": "ok" },
+      { "label": "Function hooks API", "value": "early access, may change", "state": "wip" },
+      { "label": "Bash classifier in overdrive-tools", "value": "stub, every shell row is RUN", "state": "planned" }
+    ] },
+    { "key": "checks", "type": "terminal", "lines": [
+      "$ claude plugin validate mods/overdrive-tools",
+      "$ claude plugin test mods/overdrive-tools",
+      "$ claude plugin test mods/overdrive-tabs",
+      "$ python3 tools/overdrive/test_trace.py"
+    ] },
+    { "key": "links", "type": "buttons", "items": [
+      { "label": "Art language", "sub": "tools/overdrive/FLAIR.md", "href": "tools/overdrive/FLAIR.md" },
+      { "label": "Session log", "sub": "tools/overdrive/SESSION-LOG.md", "href": "tools/overdrive/SESSION-LOG.md" },
+      { "label": "Mod specs", "sub": "mods/overdrive-tools/SPEC.md", "href": "mods/overdrive-tools/SPEC.md" },
+      { "label": "Plain text", "sub": "show copyable commands" }
+    ] },
+    { "key": "footer", "type": "footer", "studio": "VM. studio / ops", "text": "public tool · MIT · look per vm-brand playbook", "eof": "-- EOF -- frames in chat only --" }
+  ],
+  "readme": {
+    "hero_alt": "ops-overdrive — Your terminal, but louder. CLI · MODS · STATUSLINE · FLAIR.",
+    "items": [
+      "lead", "stats",
+      "divider:what", "features", "what",
+      "divider:start", "start",
+      { "details": "links", "chip": 4, "code": [
+        ["bash", "git clone https://github.com/VelimirMueller/overdrive && cd overdrive\nclaude plugin marketplace add ./mods\nclaude plugin install overdrive-tools@overdrive-mods\nclaude plugin install overdrive-tabs@overdrive-mods"]
+      ] },
+      "extras", "needs",
+      "divider:how", "flow", "lock",
+      "divider:usage", "cmds", "tools",
+      "divider:status", "status", "checks",
+      { "details": "links", "chip": 4, "code": [
+        ["bash", "claude plugin validate mods/overdrive-tools\nclaude plugin test mods/overdrive-tools\nclaude plugin test mods/overdrive-tabs\npython3 tools/overdrive/test_trace.py"]
+      ] },
+      { "buttons": "links", "only": [1, 2, 3] },
+      "footer"
+    ]
+  }
+}
