@@ -33,7 +33,7 @@ set -euo pipefail
 
 NAME="overdrive"
 ROOT="$HOME/.claude"
-# The public overdrive checkout (github.com/VelimirMueller/overdrive): the CLI, hooks, mods, output
+# The public overdrive checkout (github.com/VelimirMueller/ops-overdrive): the CLI, hooks, mods, output
 # style and statusline that ~/.claude links to. Pinned by SHA like every other tool repo.
 OVERDRIVE_SRC="${OVERDRIVE_SRC:-$HOME/Desktop/Workspace/dev/personal/overdrive}"
 VERSION_FILE="$ROOT/VERSION"

@@ -48,7 +48,7 @@
 <p>
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="assets/readme/start-v2-light.svg">
-  <img alt="Terminal: $ git clone https://github.com/VelimirMueller/overdrive &amp;&amp; cd overdrive | $ claude plugin marketplace add ./mods | $ claude plugin install overdrive-tools@overdrive-mods | $ claude plugin install overdrive-tabs@overdrive-mods | # then, inside Claude Code: /tools folded" src="assets/readme/start-v2-dark.svg" width="100%">
+  <img alt="Terminal: $ git clone https://github.com/VelimirMueller/ops-overdrive &amp;&amp; cd ops-overdrive | $ claude plugin marketplace add ./mods | $ claude plugin install overdrive-tools@overdrive-mods | $ claude plugin install overdrive-tabs@overdrive-mods | # then, inside Claude Code: /tools folded" src="assets/readme/start-v2-dark.svg" width="100%">
 </picture>
 </p>
 
@@ -56,7 +56,7 @@
 <summary><picture><source media="(prefers-color-scheme: light)" srcset="assets/readme/links-4-v2-light.svg"><img alt="Plain text" src="assets/readme/links-4-v2-dark.svg" width="32%"></picture></summary>
 
 ```bash
-git clone https://github.com/VelimirMueller/overdrive && cd overdrive
+git clone https://github.com/VelimirMueller/ops-overdrive && cd ops-overdrive
 claude plugin marketplace add ./mods
 claude plugin install overdrive-tools@overdrive-mods
 claude plugin install overdrive-tabs@overdrive-mods
