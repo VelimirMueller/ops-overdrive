@@ -349,7 +349,13 @@ export const register: Register = on => {
     }
 
     return result
-  }).catch(($, e, next) => next(e))
+  }).catch(($, e, next) =>
+    // Replay-safe by the engine's contract (Caught in the API types): in a
+    // .catch handler, when the hook had already called next, next(e) resolves
+    // to that settled result and nothing beneath runs again, so the tool call
+    // is never repeated. Only a hook that failed before next(e) runs it here.
+    next(e),
+  )
 
   on('session.measure', async ($, e, next) => {
     await refresh($, 'claude')
