@@ -1,0 +1,9 @@
+{
+  "name": "overdrive-tools",
+  "version": "0.1.0",
+  "author": {
+    "name": "Velimir Mueller"
+  },
+  "description": "Colors every tool row by kind (INF cyan, CHG magenta, RUN yellow) and folds finished rows; click a tag to open one, /tools folded|changes|all sets the default",
+  "types": "./types/index.d.ts"
+}

@@ -1,0 +1,6 @@
+{
+  "name": "overdrive-tabs",
+  "version": "1.2.4",
+  "description": "Boxed tab band above the prompt: code, tickets, claude stats, overdrive, serpent pet",
+  "types": "./types/index.d.ts"
+}

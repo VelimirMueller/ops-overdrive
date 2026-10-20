@@ -1,0 +1,12 @@
+# overdrive limits — the static "known limits" section of `overdrive limits`. Edit freely.
+# One limit per line: <area><TAB><limit><TAB><why / source>. Lines starting with # are ignored.
+claude	subscription 5h / 7d windows	`rig quota` reads the statusline cache; pipeline stops an Opus wave at ≥ 85 %
+mcp	120 s per MCP tool call	Claude Code's MCP tool ceiling (MCP_TOOL_TIMEOUT unset); image-gen returns a job_id instead of dying
+mcp	MCP responses land in context on every call	FLAIR.md caps MCP art at 2 lines / ≤ 40 tokens per response
+dual-review	~20k chars per part reliable	deepseek-v4-pro stops converging well before 68k chars (measured 2026-10-09)
+rag-context	privacy handover	any chunk under personal/, system/ or work/ → answer composed locally (11–22 s instead of ~4.5 s)
+rag-verify	1 model call, 5 notes, 120 s per tick; every 2 h	[verify] tick_max_* in vlm-rag-context/config.toml; local provider uncapped
+rag-verify	launchd cannot exec programs under ~/Desktop	installed copy lives at ~/.claude/tools/rag-verify (TCC, exit 126)
+local models	qwen3 30b-a3b MoE instruct 77 tok/s · 14b 27 · 7b 52 (32b removed)	measured 2026-10-09 on the M5 Pro 48 GB; never keep two ~20 GB models resident (memory reaper killed a job)
+hooks	PreToolUse 10–15 s, SessionEnd 10–30 s, SessionStart drift check < 150 ms	timeouts in settings.json
+session log	one line ≤ 4 KB, message ≤ 500 chars	SESSION-LOG.md — keeps O_APPEND writes atomic

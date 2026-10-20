@@ -1,0 +1,16 @@
+{
+  "name": "overdrive-mods",
+  "owner": {
+    "name": "Velimir Mueller"
+  },
+  "plugins": [
+    {
+      "name": "overdrive-tabs",
+      "source": "./overdrive-tabs"
+    },
+    {
+      "name": "overdrive-tools",
+      "source": "./overdrive-tools"
+    }
+  ]
+}

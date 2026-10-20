@@ -1,0 +1,18 @@
+# overdrive catalog — one row per tool. Edit freely; versions are read live at run time.
+# Columns (TAB-separated): name  glyph  kind  version-source  purpose  main commands
+# version-source: file:<path> (first line) · var:<path>:<NAME> (NAME="x" / NAME=x in a script)
+#   · pyproject:<dir> · npm:<package.json> · bin:<command> (<command> --version, like overdrive.lock)
+#   · overdrive (lives in ~/.claude, versioned with the setup)
+rig	⚙	CLI	file:~/.claude/tools/rig/VERSION	one health command for the rig; gates Opus waves on quota	rig doctor [--ping] · keys · quota · implementers · hooks · impl-run.sh --provider glm|deepseek
+tix	⬢	CLI	npm:~/Desktop/Workspace/dev/personal/tix/package.json	Linear tickets in house format; the only Linear write path	tix new · comment · update · attach · link · draft · polish · lint · branch --worktree · phase · chip
+dual-review	⚖	CLI	var:~/.claude/tools/dual-review/dual-review.sh:VERSION	two required reviewers (DeepSeek + GLM); the gate before /ship	dual-review · --base · --range · --staged · --status · --doctor · --dry-run · --json
+rag-vault	⛁	CLI+launchd	file:~/.claude/tools/rag-vault/VERSION	git-commits ~/Desktop/RAG (SessionEnd hook + nightly launchd job)	rag-vault-commit [--min-age H] [--quiet] · --status [--json] · launchd com.velimir.rag-vault-commit
+rag-verify	✓	launchd	var:~/.claude/tools/rag-verify/rag-verify.sh:SLOG_VERSION	2-hourly tick that checks RAG notes against reality (rag-context verify)	launchd com.velimir.rag-verify · rag-context verify status|queue|run · ~/Library/Logs/rag-verify.log
+code-context	●	MCP	npm:~/Desktop/Workspace/mcp-servers/vlm-code-context/node_modules/vlm-code-context-mcp/package.json	code index + sprint/ticket mirror + dashboard (localhost:3333)	search_files · get_file_context · find_symbol · create_ticket · plan_sprint · update_ticket · log_decision · /ccui
+rag-context	◆	MCP+CLI	pyproject:~/Desktop/Workspace/mcp-servers/vlm-rag-context	RAG over ~/Desktop/RAG: search, cited answers, verify against reality	rag_search · rag_answer · rag_get · rag_verify · rag_status · rag_doctor · CLI: index|search|answer|verify|doctor
+doc-creator	✎	MCP	pyproject:~/Desktop/Workspace/mcp-servers/vlm-doc-creator	branded documents (writer deepseek → glm → local)	doc_create · doc_illustrate · doc_typeset · doc_templates · doc_status
+image-gen	◈	MCP	pyproject:~/Desktop/Workspace/mcp-servers/vlm-image-gen	local image generation on the M5 GPU, background jobs past 120 s	generate_image · image_job_status · image_job_cancel · list_image_models · image_status
+release-pilot	⚑	MCP+CLI	pyproject:~/Desktop/Workspace/mcp-servers/vlm-release-pilot	can this go live? PRs → signals → GO/HOLD → German release notes	relpilot scan|assess|notes|plan|status|log · release_scan · release_assess · release_notes · release_plan
+overdrive	⏣	CLI	overdrive	the whole setup as one versioned tool: lock, logs, trace, catalog	overdrive status · snapshot [--if-drift] · bump · trace · catalog · limits · changelog · session
+hooks	⚓	hook	overdrive	Claude Code hooks in settings.json	PreToolUse: dual-review-gate.sh, git-guard.py · SessionEnd: rag-vault-commit · SessionStart: overdrive-drift.sh
+statusline	▤	statusline	overdrive	6-line Neon Overdrive statusline, colour-synced with Warp	statusline-command.sh · chips: quota · tix phase · ⚖ review · tools · ⏣ overdrive <ver>
