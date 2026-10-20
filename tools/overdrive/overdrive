@@ -33,6 +33,9 @@ set -euo pipefail
 
 NAME="overdrive"
 ROOT="$HOME/.claude"
+# The public overdrive checkout (github.com/VelimirMueller/overdrive): the CLI, hooks, mods, output
+# style and statusline that ~/.claude links to. Pinned by SHA like every other tool repo.
+OVERDRIVE_SRC="${OVERDRIVE_SRC:-$HOME/Desktop/Workspace/dev/personal/overdrive}"
 VERSION_FILE="$ROOT/VERSION"
 LOCK="$ROOT/overdrive.lock"
 LOG_DIR="$ROOT/.local_ai_setup_logs"
@@ -82,7 +85,7 @@ gen_lock() {
     echo "# <component>  <kind>  <pin>"
     local d name sha dirty v
     for d in "$ROOT/tools/rig" "$ROOT/tools/dual-review" "$ROOT/tools/rag-vault" \
-             "$MCP_DIR" "$MCP_DIR"/vlm-* "$HOME/Desktop/RAG"; do
+             "$OVERDRIVE_SRC" "$MCP_DIR" "$MCP_DIR"/vlm-* "$HOME/Desktop/RAG"; do
       [ -d "$d/.git" ] || continue
       name="${d/#$HOME/~}"
       sha=$(git -C "$d" rev-parse --short=10 HEAD 2>/dev/null || echo "no-commits")

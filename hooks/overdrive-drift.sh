@@ -58,7 +58,7 @@ add() { now="$now$1 $2 $3"$'\n'; }
 # SHA, and that produced 9 of 11 "auto: component drift" commits (2026-10-19). The weekly
 # snapshot still pins it.
 for d in "$ROOT/tools/rig" "$ROOT/tools/dual-review" "$ROOT/tools/rag-vault" \
-         "$MCP_DIR" "$MCP_DIR"/vlm-*; do
+         "${OVERDRIVE_SRC:-$HOME/Desktop/Workspace/dev/personal/overdrive}" "$MCP_DIR" "$MCP_DIR"/vlm-*; do
   [ -d "$d/.git" ] || continue
   sha=$(head_sha "$d"); add "~${d#"$HOME"}" git "${sha:-no-commits}"
 done
