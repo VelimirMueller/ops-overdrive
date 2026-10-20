@@ -1,0 +1,10 @@
+{
+  "$comment": "VM. studio brand manifest — see vm-brand/PLAYBOOK.md §7. art.file is the hero render inside the vm-brand repo (assets/art/v2/, seed per its queue.tsv, mirrored); banners are pre-rendered into assets/ here, the PNG itself is not shipped in this repo.",
+  "group": "ops",
+  "tagline": "Your terminal, but louder.",
+  "sublabel": "CLI · MODS · STATUSLINE · FLAIR",
+  "status": "STABLE · v1.11.0",
+  "bannerVersion": "v2",
+  "art": { "file": "v2/ops-overdrive.png", "seed": 350 },
+  "readme": "v3"
+}
