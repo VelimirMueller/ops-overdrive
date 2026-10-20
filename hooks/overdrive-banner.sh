@@ -9,6 +9,7 @@
 
 ROOT="$HOME/.claude"
 VER="?"; [ -f "$ROOT/VERSION" ] && IFS= read -r VER < "$ROOT/VERSION"
+VER="${VER//[^0-9A-Za-z.+-]/}"; [ -n "$VER" ] || VER="?"  # semver chars only: VER goes into JSON unescaped
 
 [ "${OVERDRIVE_FLAIR:-1}" = 0 ] && exit 0
 

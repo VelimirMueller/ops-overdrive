@@ -60,7 +60,7 @@ export const register: Register = on => {
         <Text color={color}>▌</Text>
         <Text color={color} bold>{TAG[kind]}</Text>
         <Text color={color}>{isOpen ? ' ▾' : ' ▸'}</Text>
-        {isOpen ? '' : <Text dimColor> {summarize(e.props.tool, e.props.input)}</Text>}
+        {isOpen ? null : <Text dimColor> {summarize(e.props.tool, e.props.input)}</Text>}
       </Button>
     )
 
