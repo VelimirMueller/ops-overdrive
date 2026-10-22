@@ -65,7 +65,6 @@ C_RED="255;42;109"
 C_MAGENTA="238;79;255"
 C_CYAN="0;255;247"
 C_BLUE="143;125;255"
-C_WHITE="242;248;255"
 C_GRAY="90;80;130"
 
 # U+E0B0 powerline chevron via printf (bash 3.2 has no $'\u...' escapes)
@@ -414,7 +413,7 @@ line2="$pl_line"
 # ================= LINE 3 — SESSION =================
 
 # --- current-session tokens + per-model usage (main transcript + its subagents) ---
-sess_in=0; sess_out=0; sess_bm='{}'
+sess_in=0; sess_out=0
 if [ -n "$transcript" ] && [ -f "$transcript" ]; then
   SESS_FILES=("$transcript")
   sess_subdir="${transcript%.jsonl}/subagents"
@@ -698,9 +697,9 @@ TOOLS_DIR="$HOME/.claude/tools"
 # rig and rag-vault keep their version in a VERSION file since 1.0.0 (builtin read, no fork)
 rig_ver=""; [ -r "$TOOLS_DIR/rig/VERSION" ] && read -r rig_ver < "$TOOLS_DIR/rig/VERSION"
 vault_ver=""; [ -r "$TOOLS_DIR/rag-vault/VERSION" ] && read -r vault_ver < "$TOOLS_DIR/rag-vault/VERSION"
-sh_val rver_ver "$TOOLS_DIR/rag-verify/rag-verify.sh"       SLOG_VERSION
-sh_val dr_ver   "$TOOLS_DIR/dual-review/dual-review.sh"     VERSION
-json_val tix_ver "$HOME/Desktop/Workspace/dev/personal/tix/package.json" "version"
+rver_ver=""; sh_val rver_ver "$TOOLS_DIR/rag-verify/rag-verify.sh"       SLOG_VERSION
+dr_ver="";   sh_val dr_ver   "$TOOLS_DIR/dual-review/dual-review.sh"     VERSION
+tix_ver=""; json_val tix_ver "$HOME/Desktop/Workspace/dev/personal/tix/package.json" "version"
 tool_chip() { # $1 = glyph+name, $2 = version ("" = not installed)
   if [ -z "$2" ]; then
     pl_add "$C_PANEL" "$C_RED" "$1 ○"

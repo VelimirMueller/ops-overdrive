@@ -1,10 +1,9 @@
 #!/bin/bash
-# Overdrive session log — bash REFERENCE helper; each tool repo vendors a copy.
-# Contract: SESSION-LOG.md next to this file. The O_NOFOLLOW / regular-file hardening came
-# back from the rig, dual-review and rag-vault copies on 2026-10-09.
+# Overdrive session log — bash helper, VENDORED from ~/.claude/tools/overdrive/sessionlog.sh
+# (this repo must stay standalone). Contract: ~/.claude/tools/overdrive/SESSION-LOG.md.
 #
 #   SLOG_TOOL=rig SLOG_VERSION=0.2.0
-#   . ~/.claude/tools/overdrive/sessionlog.sh
+#   . "$REPO_DIR/sessionlog.sh"     # the copy next to the script
 #   slog INFO "doctor: 5/5 keys resolve"
 #
 # Run directly it is a CLI too:  sessionlog.sh WARN mytool@1.0 "message"
