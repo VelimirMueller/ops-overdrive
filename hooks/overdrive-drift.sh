@@ -83,6 +83,7 @@ done
 # the same rows from the lock (dirty flag dropped, only the bins checked above)
 pinned=""
 while read -r name kind pin _; do
+  # shellcheck disable=SC2088  # the lock row is named with a literal ~, no expansion wanted
   case "$name" in ''|\#*|'~/Desktop/RAG') continue ;; esac
   case "$kind" in
     git) pinned="$pinned$name git ${pin%+dirty}"$'\n' ;;

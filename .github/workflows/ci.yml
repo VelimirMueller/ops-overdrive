@@ -1,0 +1,42 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shell:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+      # Every tracked *.sh, plus tools/overdrive/overdrive (bash, no extension).
+      - name: bash -n
+        run: |
+          git ls-files -z '*.sh' | xargs -0 -n1 bash -n
+          bash -n tools/overdrive/overdrive
+      - name: shellcheck
+        run: git ls-files -z '*.sh' | xargs -0 shellcheck -x -P SCRIPTDIR -S warning tools/overdrive/overdrive
+
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: py_compile
+        run: python3 -m py_compile tools/overdrive/trace.py
+      - name: trace tests
+        run: python3 -I tools/overdrive/test_trace.py

@@ -50,6 +50,7 @@ fi
 if [ "${OVERDRIVE_SESSION_LOG:-1}" != 0 ] && [ -n "$sid" ]; then
   dir="${OVERDRIVE_SESSION_LOG_DIR:-$ROOT/.local_ai_setup_logs/sessions}"
   log="$dir/$sid.log"
+  # shellcheck disable=SC2174  # only the sessions dir itself must be 0700
   { mkdir -p -m 700 "$dir" && [ ! -L "$log" ] && (umask 077
     ts=$(perl -MTime::HiRes=time -MPOSIX=strftime -e '$t=time; $z=strftime("%z",localtime $t); substr($z,3,0)=":"; printf "%s.%03d%s", strftime("%Y-%m-%dT%H:%M:%S",localtime $t), ($t-int $t)*1000, $z')
     printf '%s\tINFO\toverdrive-banner@%s\tpid=%s\tbanner shown\n' "$ts" "$VER" "$$" >> "$log"); } 2>/dev/null || true

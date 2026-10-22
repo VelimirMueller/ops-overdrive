@@ -1,4 +1,5 @@
 # shellcheck shell=bash
+# VENDORED from ~/.claude/tools/overdrive/flair.sh (this repo stays standalone). Contract: FLAIR.md there.
 # overdrive flair — reference bash helper (contract: FLAIR.md next to this file).
 # Vendor a copy into your repo; do not source it from ~/.claude at runtime.
 #   FLAIR_TOOL=rig FLAIR_GLYPH=⚙ ; . ./flair.sh
@@ -40,7 +41,7 @@ flair_div() {
 }
 
 flair_done() { # $1 = exit code, $2 = start ms, [$3 tokens in, $4 tokens out]
-  # shellcheck disable=SC1111  # the ‶ in ᕙ(⇀‸↼‶)ᕗ is art, not a quote
+  # shellcheck disable=SC1111  # the kaomoji contain unicode quote-like glyphs on purpose
   local rc="${1:-0}" t0="${2:-}" ms="" k ok=("┬─┬ノ( º _ºノ)" "(⌐■_■)" "ᕙ(⇀‸↼‶)ᕗ" "(•̀ᴗ•́)و") bad=("(╯°□°)╯︵ ┻━┻" "ಠ_ಠ")
   [ -n "$t0" ] && ms=$(( $(flair_now_ms) - t0 ))
   # the session-log line is written even without a TTY (it feeds `overdrive trace`)
