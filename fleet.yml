@@ -10,3 +10,7 @@ exceptions:
     value:
       pack: false
     reason: Not a package; the setup is installed from its checkout. The build stage compiles the Python tool instead of a pack dry run.
+  - rule: CI-UNIT-03
+    value:
+      lines: 0
+    reason: Bash plus one stdlib Python tool with two unittest cases; no coverage tool runs in the stage, so the floor is 0.
