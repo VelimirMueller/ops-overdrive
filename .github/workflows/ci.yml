@@ -1,42 +1,126 @@
+# Fleet standard, tier library (fleet-standard docs/rollout.md). Bash plus one stdlib Python tool: every stage is `generic`.
 name: ci
 
+# One run per change (fleet CI-COST-19): PRs into develop and main, or a manual dispatch.
+# No push trigger, so a merge does not run CI a second time.
 on:
   pull_request:
-  push:
-    branches: [main]
+    branches: [develop, main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      e2e:
+        description: Run the e2e stage
+        type: boolean
+        default: false
 
-permissions:
-  contents: read
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  shell:
+  changes:
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ github.event_name != 'pull_request' || steps.filter.outputs.code == 'true' }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # On pull_request, paths-filter lists the changed files through the API
+      # (pull-requests: read), so this job needs no checkout.
+      - name: Detect code changes
+        id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         with:
-          persist-credentials: false
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
-      # Every tracked *.sh, plus tools/overdrive/overdrive (bash, no extension).
-      - name: bash -n
-        run: |
-          git ls-files -z '*.sh' | xargs -0 -n1 bash -n
-          bash -n tools/overdrive/overdrive
-      - name: shellcheck
-        run: git ls-files -z '*.sh' | xargs -0 shellcheck -x -P SCRIPTDIR -S warning tools/overdrive/overdrive
+          # `every`: a file counts as code when it matches ALL negations, i.e. it is not docs.
+          # A src-only or mixed src + docs PR gives code=true; a docs-only PR gives code=false.
+          predicate-quantifier: every
+          filters: |
+            code:
+              - '!**/*.md'
+              - '!docs/**'
+              - '!LICENSE'
+              - '!.github/ISSUE_TEMPLATE/**'
 
-  python:
+  lint:
+    needs: changes
+    if: ${{ !failure() && !cancelled() && needs.changes.outputs.code == 'true' }}
+    permissions:
+      contents: read
+    uses: VelimirMueller/fleet-workflows/.github/workflows/_ci-lint.yml@v0.0.2
+    with:
+      stack: generic
+      # Every tracked *.sh, plus tools/overdrive/overdrive (bash, no extension).
+      command: >-
+        git ls-files -z '*.sh' | xargs -0 -n1 bash -n &&
+        bash -n tools/overdrive/overdrive &&
+        git ls-files -z '*.sh' | xargs -0 shellcheck -x -P SCRIPTDIR -S warning tools/overdrive/overdrive
+
+  unit:
+    needs: [changes, lint]
+    if: ${{ !failure() && !cancelled() && needs.changes.outputs.code == 'true' }}
+    permissions:
+      contents: read
+    uses: VelimirMueller/fleet-workflows/.github/workflows/_ci-unit.yml@v0.0.2
+    with:
+      stack: generic
+      command: python3 -I tools/overdrive/test_trace.py
+      # Bash plus two stdlib unittest cases, no coverage tool (fleet.yml exception CI-UNIT-01).
+      coverage-floor: 0
+
+  e2e:
+    # Dispatch only (fleet CI-E2E); unit already waits for lint.
+    needs: [changes, unit]
+    if: ${{ !failure() && !cancelled() && github.event_name == 'workflow_dispatch' && inputs.e2e }}
+    permissions:
+      contents: read
+    uses: VelimirMueller/fleet-workflows/.github/workflows/_ci-e2e.yml@v0.0.2
+    with:
+      stack: generic
+
+  build:
+    # !failure() && !cancelled() lets build run when e2e is skipped (the default).
+    needs: [changes, e2e]
+    if: ${{ !failure() && !cancelled() && needs.changes.outputs.code == 'true' }}
+    permissions:
+      contents: read
+    uses: VelimirMueller/fleet-workflows/.github/workflows/_ci-build.yml@v0.0.2
+    with:
+      stack: generic
+      # Not a package: the build compiles the Python tool.
+      command: python3 -m py_compile tools/overdrive/trace.py
+
+  conclusion:
+    # A draft PR skips every stage, so conclusion passes; ready_for_review runs CI again.
+    needs: [changes, lint, unit, e2e, build]
+    if: always()
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
+    permissions: {}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: py_compile
-        run: python3 -m py_compile tools/overdrive/trace.py
-      - name: trace tests
-        run: python3 -I tools/overdrive/test_trace.py
+      - name: Fail when a job failed or a required stage was skipped
+        env:
+          CODE: ${{ needs.changes.outputs.code }}
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+          LINT: ${{ needs.lint.result }}
+          UNIT: ${{ needs.unit.result }}
+          BUILD: ${{ needs.build.result }}
+        run: |
+          for r in $RESULTS; do
+            case "$r" in success|skipped) ;; *) echo "::error::a job ended as $r"; exit 1 ;; esac
+          done
+          if [ "$CODE" = "true" ]; then
+            for r in "$LINT" "$UNIT" "$BUILD"; do
+              [ "$r" = "success" ] || { echo "::error::a required stage did not run"; exit 1; }
+            done
+          fi
