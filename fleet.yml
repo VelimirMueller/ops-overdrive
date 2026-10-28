@@ -1,0 +1,12 @@
+# fleet.yml: tier and visibility of this repo (STANDARD.md). Exceptions: docs/rollout.md.
+tier: library
+visibility: public
+exceptions:
+  - rule: CI-UNIT-01
+    value:
+      coverage: false
+    reason: The repo is Bash plus one stdlib Python tool with two unittest cases; the unit stage runs them without a coverage tool, so coverage-floor is 0.
+  - rule: CI-BUILD-04
+    value:
+      pack: false
+    reason: Not a package; the setup is installed from its checkout. The build stage compiles the Python tool instead of a pack dry run.
