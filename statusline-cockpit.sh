@@ -170,6 +170,8 @@ cached() { # $1 = cache file, $2 = ttl s, rest = command; prints the cached or f
   fi
   local out; out=$("$@" 2>/dev/null)
   # A failed probe keeps the last good value on screen (stale beats blank).
+  # With no cache at all an empty line goes back on purpose: the caller then
+  # shows the red "error" chip for that tool.
   if [ -z "$out" ] && [ -s "$f" ]; then cat "$f"; return; fi
   # Every probe names its empty states (dual-review "none", tix "notrepo", ollama
   # "idle"/"off"), so empty output means the probe failed: never cache it.
@@ -208,6 +210,7 @@ if [ -n "$TIX" ] && [ -d "$cwd" ]; then
 fi
 # Ollama: loaded model from /api/ps, embedders skipped, cached 10 s.
 ollama_probe() { # hard 1 s limit: a hung daemon never freezes the status line
+  # `local` on its own line: the `||` then sees curl's exit status (tested: port 1 -> "off").
   local body; body=$(curl -s --max-time 1 http://127.0.0.1:11434/api/ps 2>/dev/null) || { echo off; return 0; }
   printf '%s' "$body" | jq -r '[.models[]?.name | select(test("embed") | not)][0] // "idle"' 2>/dev/null
 }
