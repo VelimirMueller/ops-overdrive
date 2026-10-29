@@ -23,24 +23,28 @@ ACCENT="99;102;241"; ACCENT_T="129;140;248"; OK="16;185;129"
 WARN="228;181;103"; BAD="172;65;66"; ELEV="24;24;27"
 
 # \x1f, not a tab: read collapses empty tab-separated fields and shifts the rest.
-IFS=$'\x1f' read -r model ctx cwd five seven < <(jq -r '[
-  (.model.display_name // .model.id // "claude"),
-  (.context_window.used_percentage // "" | tostring),
-  (.workspace.current_dir // .cwd // ""),
-  (.rate_limits.five_hour.used_percentage // "" | tostring),
-  (.rate_limits.seven_day.used_percentage // "" | tostring)
-] | join("\u001f")' <<<"$input")
+# Text fields lose control characters and backslashes; percentages are integers
+# made by jq, so no payload text reaches $(( )) or a terminal escape.
+IFS=$'\x1f' read -r model ctx cwd five seven < <(jq -r '
+  def pct: if type == "number" then floor | tostring else "" end;
+  def txt: tostring | explode | map(select(. >= 32 and . != 127 and . != 92)) | implode;
+  [ (.model.display_name // .model.id // "claude" | txt),
+    (.context_window.used_percentage | pct),
+    (.workspace.current_dir // .cwd // "" | txt),
+    (.rate_limits.five_hour.used_percentage | pct),
+    (.rate_limits.seven_day.used_percentage | pct)
+  ] | join("\u001f")' <<<"$input")
 
 sep=" $(fg "$FAINT")│$R "
 chip() { printf '%s%s %s %s' "$(bg "$1")" "$(fg "$2")" "$3" "$R"; }
-pct_color() { local p=${1%%.*}; [ -z "$p" ] && { echo "$SUB"; return; }
+pct_color() { local p=$1; [[ "$p" =~ ^[0-9]+$ ]] || { echo "$SUB"; return; }
   if [ "$p" -ge 85 ]; then echo "$BAD"; elif [ "$p" -ge 60 ]; then echo "$WARN"; else echo "$OK"; fi; }
 
 # ---- line 1 ----
 l1="$(chip "$ACCENT" "$TEXT" "◇ OPS COCKPIT")"
 l1+=" $(fg "$TEXT")${model}$R"
-if [[ "$ctx" =~ ^[0-9] ]]; then
-  p=${ctx%%.*}; n=$(( p / 10 )); bar=""
+if [[ "$ctx" =~ ^[0-9]+$ ]]; then
+  p=$ctx; n=$(( p / 10 )); bar=""
   for ((i=0;i<10;i++)); do [ $i -lt $n ] && bar+="▰" || bar+="▱"; done
   l1+="${sep}$(fg "$(pct_color "$p")")${bar} ${p}%$R"
 fi
@@ -82,8 +86,8 @@ fi
 l2="$(chip "$ELEV" "$SUB" "control")"
 l2+=" ${auth}${sep}${mcp}${sep}${guard}"
 lim=""
-[ -n "$five" ] && lim+="$(fg "$(pct_color "$five")")5h ${five%%.*}%$R"
-[ -n "$seven" ] && lim+="${lim:+ }$(fg "$(pct_color "$seven")")7d ${seven%%.*}%$R"
+[ -n "$five" ] && lim+="$(fg "$(pct_color "$five")")5h ${five}%$R"
+[ -n "$seven" ] && lim+="${lim:+ }$(fg "$(pct_color "$seven")")7d ${seven}%$R"
 [ -n "$lim" ] && l2+="${sep}${lim}"
 
-printf '%b\n%b\n' "$l1" "$l2"
+printf '%s\n%s\n' "$l1" "$l2"
