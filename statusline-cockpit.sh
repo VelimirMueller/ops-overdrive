@@ -10,6 +10,7 @@
 #   Line 1 — WHERE:  ◇ OPS COCKPIT > model > context bar % > dir > ⎇ branch
 #   Line 3 — MCP:     code-context · rag-context · release-pilot · doc-creator · image-gen
 #   Line 4 — TOOLS:   rig · tix · dual-review · rag-vault · rag-verify (versions)
+#   Line 5 — WORK:    ⚖ dual-review gate · ⬢ tix ticket/phase · ⚡ ollama model
 #   Line 2 — CONTROL: claude auth (login / api key) > MCP mode (gateway / direct)
 #                     > guardrails (deny · ask) > 5h / 7d limits
 # Reads only small files; never ~/.claude.json (large, rewritten by Claude Code).
@@ -154,4 +155,50 @@ l4="$(chip "$ELEV" "$SUB" "tools  ")"
 l4+="$(tool "⚙ rig" "$rig_v")$(fg "$FAINT") ·$R$(tool "⬢ tix" "$tix_v")$(fg "$FAINT") ·$R$(tool "⚖ dual-review" "$dr_v")"
 l4+="$(fg "$FAINT") ·$R$(tool "⛁ rag-vault" "$vault_v")$(fg "$FAINT") ·$R$(tool "✓ rag-verify" "$verify_v")"
 
-printf '%s\n%s\n%s\n%s\n' "$l1" "$l2" "$l3" "$l4"
+# ---- line 5 — work: dual-review gate · tix ticket/phase · ollama model ----
+# Both CLIs answer "LEVEL<TAB>TEXT" (same contract as the Neon line). Their text
+# goes through the same character filter as the payload before it is printed.
+CDIR="$HOME/.claude/.statusline-cache"
+clean() { jq -Rr "$TXT_DEF txt" 2>/dev/null; }
+cached() { # $1 = cache file, $2 = ttl s, rest = command; prints the cached or fresh output
+  local f=$1 ttl=$2; shift 2
+  if [ -f "$f" ] && [ $(( $(date +%s) - $(stat -f %m "$f" 2>/dev/null || echo 0) )) -lt "$ttl" ]; then
+    cat "$f"; return
+  fi
+  local out; out=$("$@" 2>/dev/null)
+  mkdir -p "${f%/*}" 2>/dev/null && printf '%s\n' "$out" > "$f.$$" && mv -f "$f.$$" "$f"
+  printf '%s\n' "$out"
+}
+level_color() { case "$1" in
+  pass|ok|notrepo) echo "$OK" ;; fail|nokey|nokeys|error) echo "$BAD" ;;
+  stale|partial|blocked|warn) echo "$WARN" ;; *) echo "$FAINT" ;; esac; }
+key=$(printf '%s' "$cwd" | cksum | cut -d' ' -f1)
+l5="$(chip "$ELEV" "$SUB" "work   ")"
+DR="$HOME/.claude/tools/dual-review/dual-review.sh"
+if [ -x "$DR" ] && [ -d "$cwd" ]; then
+  dr=$(cd "$cwd" && cached "$CDIR/chip/cockpit-dr-$key.txt" 5 "$DR" --chip | head -1)
+  dr_l=${dr%%$'\t'*}; dr_t=$(printf '%s' "${dr#*$'\t'}" | clean)
+  l5+=" $(fg "$(level_color "$dr_l")")${dr_t:-⚖ review ?}$R"
+else
+  l5+=" $(fg "$BAD")⚖ dual-review missing$R"
+fi
+TIX=$(command -v tix 2>/dev/null); [ -z "$TIX" ] && [ -x "$HOME/.bun/bin/tix" ] && TIX="$HOME/.bun/bin/tix"
+if [ -n "$TIX" ] && [ -d "$cwd" ]; then
+  tx=$(cd "$cwd" && cached "$CDIR/chip/cockpit-tix-$key.txt" 10 "$TIX" chip | head -1)
+  tx_l=${tx%%$'\t'*}; tx_t=$(printf '%s' "${tx#*$'\t'}" | clean); tx_t=${tx_t/🎫/⬢}
+  [[ "$tx_t" =~ ^(.*)\ \(todo.*\)$ ]] && tx_t="${BASH_REMATCH[1]}"
+  l5+="${sep}$(fg "$(level_color "$tx_l")")${tx_t:-⬢ tix ?}$R"
+fi
+# Ollama: loaded model from /api/ps (no curl), embedders skipped, cached 10 s.
+ollama_probe() {
+  exec 3<>/dev/tcp/127.0.0.1/11434 || return 0
+  printf 'GET /api/ps HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3
+  local body="" l=""; while IFS= read -r -t 1 l <&3; do body="$l"; done; [ -n "$l" ] && body="$l"
+  exec 3>&- 3<&-
+  printf '%s' "$body" | jq -r '[.models[]?.name | select(test("embed") | not)][0] // "idle"' 2>/dev/null
+}
+om=$(cached "$CDIR/cockpit-ollama.txt" 10 ollama_probe | head -1 | clean)
+if [ -n "$om" ]; then om=${om%:latest}; l5+="${sep}$(fg "$OK")⚡ ollama$R $(fg "$TEXT")${om%%-*}$R"
+else l5+="${sep}$(fg "$FAINT")⚡ ollama off$R"; fi
+
+printf '%s\n%s\n%s\n%s\n%s\n' "$l1" "$l2" "$l3" "$l4" "$l5"
