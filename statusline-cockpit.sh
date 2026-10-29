@@ -163,14 +163,18 @@ clean() { jq -Rr "$TXT_DEF txt" 2>/dev/null; }
 cached() { # $1 = cache file, $2 = ttl s, rest = command; prints the cached or fresh output
   local f=$1 ttl=$2; shift 2
   # `date -r FILE` prints the file mtime on macOS (date(1) accepts a file there,
-  # verified 2026-10-29) and on GNU; a failed read gives age "now", i.e. stale.
-  if [ -f "$f" ] && [ $(( $(date +%s) - $(date -r "$f" +%s 2>/dev/null || echo 0) )) -lt "$ttl" ]; then
+  # verified 2026-10-29) and on GNU. No mtime -> not fresh -> probe again.
+  local mtime; mtime=$(date -r "$f" +%s 2>/dev/null) || mtime=""
+  if [ -n "$mtime" ] && [ $(( $(date +%s) - mtime )) -lt "$ttl" ]; then
     cat "$f"; return
   fi
   local out; out=$("$@" 2>/dev/null)
-  # Empty output is a failed probe: never cache it, so the next render retries.
-  local tmp="$f.$$.$RANDOM"
-  [ -n "$out" ] && mkdir -p "${f%/*}" 2>/dev/null && printf '%s\n' "$out" > "$tmp" && mv -f "$tmp" "$f"
+  # Every probe names its empty states (dual-review "none", tix "notrepo", ollama
+  # "idle"/"off"), so empty output means the probe failed: never cache it.
+  local tmp
+  if [ -n "$out" ] && mkdir -p "${f%/*}" 2>/dev/null && tmp=$(mktemp "$f.XXXXXX" 2>/dev/null); then
+    printf '%s\n' "$out" > "$tmp" && mv -f "$tmp" "$f" || rm -f "$tmp"
+  fi
   printf '%s\n' "$out"
 }
 split_chip() { # "LEVEL<TAB>TEXT" -> $lvl $txt; a line without a tab is all text, level unknown
