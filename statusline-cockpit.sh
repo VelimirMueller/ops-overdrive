@@ -8,6 +8,8 @@
 # faint #71717a, accent #6366F1, accentText #818CF8, status #10b981.
 #
 #   Line 1 — WHERE:  ◇ OPS COCKPIT > model > context bar % > dir > ⎇ branch
+#   Line 3 — MCP:     code-context · rag-context · release-pilot · doc-creator · image-gen
+#   Line 4 — TOOLS:   rig · tix · dual-review · rag-vault · rag-verify (versions)
 #   Line 2 — CONTROL: claude auth (login / api key) > MCP mode (gateway / direct)
 #                     > guardrails (deny · ask) > 5h / 7d limits
 # Reads only small files; never ~/.claude.json (large, rewritten by Claude Code).
@@ -91,4 +93,56 @@ lim=""
 [ -n "$seven" ] && lim+="${lim:+ }$(fg "$(pct_color "$seven")")7d ${seven}%$R"
 [ -n "$lim" ] && l2+="${sep}${lim}"
 
-printf '%s\n%s\n' "$l1" "$l2"
+# ---- line 3 — MCP servers: up (●) / down (○) + version ----
+# One `ps` snapshot, cached 10 s in its own file (the Neon cache is not written
+# while only cockpit sessions run). Same process markers as statusline-command.sh.
+CACHE="$HOME/.claude/.statusline-cache/cockpit-mcp.txt"
+up=""
+if [ -f "$CACHE" ] && [ $(( $(date +%s) - $(stat -f %m "$CACHE" 2>/dev/null || echo 0) )) -lt 10 ]; then
+  read -r up < "$CACHE"
+fi
+if [ -z "$up" ]; then
+  ps_all=$(ps -Ao args= 2>/dev/null)
+  for marker in "vlm-code-context-mcp/dist/server" "rag_context.server" "release_pilot.server" \
+                "doc_creator.server" "image_gen.server"; do
+    case "$ps_all" in *"$marker"*) up+="1" ;; *) up+="0" ;; esac
+  done
+  mkdir -p "${CACHE%/*}" 2>/dev/null && printf '%s\n' "$up" > "$CACHE.$$" && mv -f "$CACHE.$$" "$CACHE"
+fi
+ver_of() { # $1 = file, $2 = key; first `key = "x"` (toml) or `"key": "x"` (json)
+  [ -r "$1" ] || return 0
+  sed -n -E "s/^[[:space:]]*\"?$2\"?[[:space:]]*[:=][[:space:]]*\"([^\"]+)\".*/\1/p" "$1" | head -1
+}
+MCP_DIR="$HOME/Desktop/Workspace/mcp-servers"
+# Bash arrays and ${var:i:1} are fine: the file is #!/bin/bash and
+# statusline-command.sh starts it with `exec bash`. macOS only (stat -f %m).
+names=(code-context rag-context release-pilot doc-creator image-gen)
+vers=("$(ver_of "$MCP_DIR/vlm-code-context/node_modules/vlm-code-context-mcp/package.json" version)"
+      "$(ver_of "$MCP_DIR/vlm-rag-context/pyproject.toml" version)"
+      "$(ver_of "$MCP_DIR/vlm-release-pilot/pyproject.toml" version)"
+      "$(ver_of "$MCP_DIR/vlm-doc-creator/pyproject.toml" version)"
+      "$(ver_of "$MCP_DIR/vlm-image-gen/pyproject.toml" version)")
+l3="$(chip "$ELEV" "$SUB" "mcp    ")"
+for i in 0 1 2 3 4; do
+  [ "$i" -gt 0 ] && l3+="$(fg "$FAINT") ·$R"
+  if [ "${up:$i:1}" = 1 ]; then l3+=" $(fg "$OK")●$R"; else l3+=" $(fg "$FAINT")○$R"; fi
+  l3+=" $(fg "$TEXT")${names[$i]}$R"; [ -n "${vers[$i]}" ] && l3+=" $(fg "$FAINT")${vers[$i]}$R"
+done
+
+# ---- line 4 — local CLIs: version, amber = pre-1.0, red ○ = missing ----
+T="$HOME/.claude/tools"
+tool() { # $1 = label, $2 = version
+  if [ -z "$2" ]; then printf ' %s%s ○%s' "$(fg "$BAD")" "$1" "$R"
+  elif [ "${2%%.*}" = 0 ]; then printf ' %s%s %s%s%s' "$(fg "$TEXT")" "$1" "$(fg "$WARN")" "$2" "$R"
+  else printf ' %s%s %s%s%s' "$(fg "$TEXT")" "$1" "$(fg "$ACCENT_T")" "$2" "$R"; fi
+}
+rig_v=""; [ -r "$T/rig/VERSION" ] && read -r rig_v < "$T/rig/VERSION"
+vault_v=""; [ -r "$T/rag-vault/VERSION" ] && read -r vault_v < "$T/rag-vault/VERSION"
+verify_v=$(sed -n -E 's/.*SLOG_VERSION=\"?([0-9][^\" ;]*).*/\1/p' "$T/rag-verify/rag-verify.sh" 2>/dev/null | head -1)
+dr_v=$(sed -n -E 's/^VERSION=\"?([0-9][^\" ;]*).*/\1/p' "$T/dual-review/dual-review.sh" 2>/dev/null | head -1)
+tix_v=$(ver_of "$HOME/Desktop/Workspace/dev/personal/tix/package.json" version)
+l4="$(chip "$ELEV" "$SUB" "tools  ")"
+l4+="$(tool "⚙ rig" "$rig_v")$(fg "$FAINT") ·$R$(tool "⬢ tix" "$tix_v")$(fg "$FAINT") ·$R$(tool "⚖ dual-review" "$dr_v")"
+l4+="$(fg "$FAINT") ·$R$(tool "⛁ rag-vault" "$vault_v")$(fg "$FAINT") ·$R$(tool "✓ rag-verify" "$verify_v")"
+
+printf '%s\n%s\n%s\n%s\n' "$l1" "$l2" "$l3" "$l4"
