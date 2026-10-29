@@ -165,7 +165,9 @@ cached() { # $1 = cache file, $2 = ttl s, rest = command; prints the cached or f
   # `date -r FILE` prints the file mtime on macOS (date(1) accepts a file there,
   # verified 2026-10-29) and on GNU. No mtime -> not fresh -> probe again.
   local mtime; mtime=$(date -r "$f" +%s 2>/dev/null) || mtime=""
-  if [ -n "$mtime" ] && [ $(( $(date +%s) - mtime )) -lt "$ttl" ]; then
+  local now age=""; now=$(date +%s)
+  [ -n "$mtime" ] && age=$(( now - mtime ))
+  if [ -n "$age" ] && [ "$age" -lt "$ttl" ]; then
     cat "$f"; return
   fi
   local out; out=$("$@" 2>/dev/null)
@@ -188,7 +190,7 @@ level_color() { case "$1" in
   pass|ok|notrepo) echo "$OK" ;; fail|nokey|nokeys|error) echo "$BAD" ;;
   stale|partial|blocked|warn) echo "$WARN" ;; *) echo "$FAINT" ;; esac; }
 # One cache entry per checkout: md5 of the full path (CRC32 could collide).
-key=$(md5 -q -s "$cwd")   # macOS md5(1); this status line is macOS only
+key=$(printf "%s" "$cwd" | cksum | cut -d" " -f1)   # POSIX cksum: one cache key per repo path
 l5="$(chip "$ELEV" "$SUB" "work   ")"
 DR="$HOME/.claude/tools/dual-review/dual-review.sh"
 if [ -x "$DR" ] && [ -d "$cwd" ]; then
