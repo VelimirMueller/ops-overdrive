@@ -304,8 +304,17 @@ line1="$pl_line"
 # --- git: ONE porcelain=v2 call yields branch, upstream, ahead/behind and dirty ---
 # (the old version needed rev-parse + branch --show-current + rev-parse --short
 #  + status --porcelain + rev-list, five spawns, plus a grep -c to count)
-git_branch=""; git_dirty=0; git_ahead=0; git_behind=0
-if [ -d "$cwd" ]; then
+git_branch=""; git_dirty=0; git_ahead=0; git_behind=0; git_skip=""
+# `git status` can run a repo's own clean/process filters when it re-hashes a
+# file. Reading config runs nothing, so a repo (or worktree) that defines a
+# filter gets the branch only, from symbolic-ref, and no dirty count.
+if [ -d "$cwd" ] && git -C "$cwd" config --show-scope --get-regexp '^filter\.' 2>/dev/null \
+     | grep -qE '^(local|worktree|command)'; then
+  git_skip=1
+  if ! git_branch=$(git -C "$cwd" symbolic-ref --short -q HEAD 2>/dev/null); then
+    git_oid=$(git -C "$cwd" rev-parse -q --verify HEAD 2>/dev/null) && git_branch="(detached)"
+  fi
+elif [ -d "$cwd" ]; then
   while IFS= read -r _l; do
     case "$_l" in
       '# branch.head '*)  git_branch="${_l#\# branch.head }" ;;
@@ -319,8 +328,11 @@ if [ -d "$cwd" ]; then
     esac
   # The repo is not trusted: its config must not start fsmonitor or hook code.
   done < <(git -C "$cwd" -c core.fsmonitor=false -c core.hooksPath=/dev/null \
-             -c core.untrackedCache=false --no-optional-locks \
-             status --porcelain=v2 --branch 2>/dev/null)
+             -c core.untrackedCache=false -c core.attributesFile=/dev/null \
+             --no-optional-locks status --porcelain=v2 --branch \
+             --ignore-submodules=all 2>/dev/null)
+fi
+if [ -d "$cwd" ]; then
   # detached HEAD reports "(detached)" as branch.head — show the short sha instead
   [ "$git_branch" = "(detached)" ] && git_branch="${git_oid:0:7}"
   # A branch name may hold bidi or control characters: same filter as the payload.
@@ -335,6 +347,7 @@ if [ -n "$git_branch" ]; then
   br="$git_branch"; [ "${#br}" -gt 24 ] && br="${br:0:23}…"
   git_txt="⎇ ${br}"
   [ "${git_dirty:-0}" -gt 0 ] 2>/dev/null && git_txt="${git_txt} ✚${git_dirty}"
+  [ -n "$git_skip" ] && git_txt="${git_txt} ✚?"
   [ "${git_ahead:-0}" -gt 0 ] 2>/dev/null && git_txt="${git_txt} ⇡${git_ahead}"
   [ "${git_behind:-0}" -gt 0 ] 2>/dev/null && git_txt="${git_txt} ⇣${git_behind}"
   if [ "${git_dirty:-0}" -gt 0 ] 2>/dev/null; then

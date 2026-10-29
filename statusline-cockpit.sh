@@ -55,11 +55,19 @@ if [ -n "$cwd" ]; then
   short=${cwd/#$HOME/\~}
   l1+="${sep}$(fg "$SUB")${short}$R"
   # Repo config must not run code: no fsmonitor, hooks or untracked cache.
-  G=(git -C "$cwd" -c core.fsmonitor=false -c core.hooksPath=/dev/null -c core.untrackedCache=false --no-optional-locks)
+  G=(git -C "$cwd" -c core.fsmonitor=false -c core.hooksPath=/dev/null -c core.untrackedCache=false
+     -c core.attributesFile=/dev/null --no-optional-locks)
   br=$("${G[@]}" symbolic-ref --short -q HEAD 2>/dev/null | jq -Rr "$TXT_DEF txt")
   if [ -n "$br" ]; then
-    dirty=$("${G[@]}" status --porcelain -uno 2>/dev/null | head -1)
-    l1+="${sep}$(fg "$ACCENT_T")⎇ ${br}$R"; [ -n "$dirty" ] && l1+="$(fg "$WARN") ●$R"
+    l1+="${sep}$(fg "$ACCENT_T")⎇ ${br}$R"
+    # `git status` can run a repo's own clean/process filter. Reading config runs
+    # nothing, so a repo or worktree that defines a filter gets no dirty dot.
+    if "${G[@]}" config --show-scope --get-regexp '^filter\.' 2>/dev/null | grep -qE '^(local|worktree|command)'; then
+      l1+="$(fg "$FAINT") ●?$R"
+    else
+      dirty=$("${G[@]}" status --porcelain -uno --ignore-submodules=all 2>/dev/null | head -1)
+      [ -n "$dirty" ] && l1+="$(fg "$WARN") ●$R"
+    fi
   fi
 fi
 
