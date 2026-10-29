@@ -308,6 +308,8 @@ git_branch=""; git_dirty=0; git_ahead=0; git_behind=0; git_skip=""
 # `git status` can run a repo's own clean/process filters when it re-hashes a
 # file. Reading config runs nothing, so a repo (or worktree) that defines a
 # filter gets the branch only, from symbolic-ref, and no dirty count.
+# Global and system filters (git-lfs) are the user's own config, not the repo's,
+# so they stay allowed: a repo cannot write them.
 if [ -d "$cwd" ] && git -C "$cwd" config --show-scope --get-regexp '^filter\.' 2>/dev/null \
      | grep -qE '^(local|worktree|command)'; then
   git_skip=1

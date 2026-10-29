@@ -62,6 +62,7 @@ if [ -n "$cwd" ]; then
     l1+="${sep}$(fg "$ACCENT_T")⎇ ${br}$R"
     # `git status` can run a repo's own clean/process filter. Reading config runs
     # nothing, so a repo or worktree that defines a filter gets no dirty dot.
+    # Global and system filters (git-lfs) are the user's own config: allowed.
     if "${G[@]}" config --show-scope --get-regexp '^filter\.' 2>/dev/null | grep -qE '^(local|worktree|command)'; then
       l1+="$(fg "$FAINT") ●?$R"
     else
