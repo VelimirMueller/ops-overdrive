@@ -114,6 +114,8 @@ ver_of() { # $1 = file, $2 = key; first `key = "x"` (toml) or `"key": "x"` (json
   sed -n -E "s/^[[:space:]]*\"?$2\"?[[:space:]]*[:=][[:space:]]*\"([^\"]+)\".*/\1/p" "$1" | head -1
 }
 MCP_DIR="$HOME/Desktop/Workspace/mcp-servers"
+# Bash arrays and ${var:i:1} are fine: the file is #!/bin/bash and
+# statusline-command.sh starts it with `exec bash`. macOS only (stat -f %m).
 names=(code-context rag-context release-pilot doc-creator image-gen)
 vers=("$(ver_of "$MCP_DIR/vlm-code-context/node_modules/vlm-code-context-mcp/package.json" version)"
       "$(ver_of "$MCP_DIR/vlm-rag-context/pyproject.toml" version)"
