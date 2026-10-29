@@ -533,6 +533,11 @@ fi
 if [ -n "$five" ] || [ -n "$week" ]; then
   mkdir -p "$CACHE_DIR" 2>/dev/null
   _rl_tmp="$CACHE_DIR/.rate-limits.$$.json"
+  # Claude Code ends a slow status line with a signal; without the trap the
+  # empty temp file stays behind (15 orphans seen 2026-10-29).
+  trap 'rm -f "$_rl_tmp"' EXIT
+  trap 'exit 143' TERM
+  trap 'exit 130' INT
   if jq -n --arg five "$five" --arg week "$week" --arg reset "${reset_at:-}" \
       --arg r5 "${reset_5h:-}" --arg r7 "${reset_7d:-}" --argjson ts "$NOW" \
       'def rst(x): if (x == "" or x == "null") then null
@@ -549,6 +554,7 @@ if [ -n "$five" ] || [ -n "$week" ]; then
   else
     rm -f "$_rl_tmp" 2>/dev/null
   fi
+  trap - EXIT TERM INT
 fi
 
 # color rate-limit segment by the hotter of the two windows
