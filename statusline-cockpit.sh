@@ -25,9 +25,10 @@ WARN="228;181;103"; BAD="172;65;66"; ELEV="24;24;27"
 # \x1f, not a tab: read collapses empty tab-separated fields and shifts the rest.
 # Text fields lose control characters and backslashes; percentages are integers
 # made by jq, so no payload text reaches $(( )) or a terminal escape.
-IFS=$'\x1f' read -r model ctx cwd five seven < <(jq -r '
+# C0, DEL, C1 (CSI U+009B), backslash and bidi/format marks never reach the terminal.
+TXT_DEF='def txt: tostring | explode | map(select(. >= 32 and . != 127 and . != 92 and (. < 128 or . > 159) and (. < 8206 or . > 8207) and (. < 8234 or . > 8238) and (. < 8294 or . > 8297))) | implode;'
+IFS=$'\x1f' read -r model ctx cwd five seven < <(jq -r "$TXT_DEF"'
   def pct: if type == "number" then floor | tostring else "" end;
-  def txt: tostring | explode | map(select(. >= 32 and . != 127 and . != 92)) | implode;
   [ (.model.display_name // .model.id // "claude" | txt),
     (.context_window.used_percentage | pct),
     (.workspace.current_dir // .cwd // "" | txt),
@@ -53,7 +54,7 @@ if [ -n "$cwd" ]; then
   l1+="${sep}$(fg "$SUB")${short}$R"
   # Repo config must not run code: no fsmonitor, hooks or untracked cache.
   G=(git -C "$cwd" -c core.fsmonitor=false -c core.hooksPath=/dev/null -c core.untrackedCache=false --no-optional-locks)
-  br=$("${G[@]}" symbolic-ref --short -q HEAD 2>/dev/null)
+  br=$("${G[@]}" symbolic-ref --short -q HEAD 2>/dev/null | jq -Rr "$TXT_DEF txt")
   if [ -n "$br" ]; then
     dirty=$("${G[@]}" status --porcelain -uno 2>/dev/null | head -1)
     l1+="${sep}$(fg "$ACCENT_T")⎇ ${br}$R"; [ -n "$dirty" ] && l1+="$(fg "$WARN") ●$R"
