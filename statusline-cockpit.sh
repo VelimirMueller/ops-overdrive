@@ -183,13 +183,15 @@ split_chip() { # "LEVEL<TAB>TEXT" -> $lvl $txt; a line without a tab is all text
 level_color() { case "$1" in
   pass|ok|notrepo) echo "$OK" ;; fail|nokey|nokeys|error) echo "$BAD" ;;
   stale|partial|blocked|warn) echo "$WARN" ;; *) echo "$FAINT" ;; esac; }
-key=$(printf '%s' "$cwd" | cksum | cut -d' ' -f1)
+# One cache entry per checkout: md5 of the full path (CRC32 could collide).
+key=$(md5 -q -s "$cwd" 2>/dev/null || printf '%s' "$cwd" | cksum | cut -d' ' -f1)
 l5="$(chip "$ELEV" "$SUB" "work   ")"
 DR="$HOME/.claude/tools/dual-review/dual-review.sh"
 if [ -x "$DR" ] && [ -d "$cwd" ]; then
   dr=$(cd "$cwd" && cached "$CDIR/chip/cockpit-dr-$key.txt" 5 "$DR" --chip | head -1)
   split_chip "$dr"; dr_l=$lvl; dr_t=$(printf '%s' "$txt" | clean)
-  l5+=" $(fg "$(level_color "$dr_l")")${dr_t:-⚖ review ?}$R"
+  if [ -n "$dr" ]; then l5+=" $(fg "$(level_color "$dr_l")")${dr_t:-⚖ review ?}$R"
+  else l5+=" $(fg "$BAD")⚖ dual-review error$R"; fi   # probe failed or printed nothing
 else
   l5+=" $(fg "$BAD")⚖ dual-review missing$R"
 fi
@@ -198,7 +200,8 @@ if [ -n "$TIX" ] && [ -d "$cwd" ]; then
   tx=$(cd "$cwd" && cached "$CDIR/chip/cockpit-tix-$key.txt" 10 "$TIX" chip | head -1)
   split_chip "$tx"; tx_l=$lvl; tx_t=$(printf '%s' "$txt" | clean); tx_t=${tx_t/🎫/⬢}
   [[ "$tx_t" =~ ^(.*)\ \(todo.*\)$ ]] && tx_t="${BASH_REMATCH[1]}"
-  l5+="${sep}$(fg "$(level_color "$tx_l")")${tx_t:-⬢ tix ?}$R"
+  if [ -n "$tx" ]; then l5+="${sep}$(fg "$(level_color "$tx_l")")${tx_t:-⬢ tix ?}$R"
+  else l5+="${sep}$(fg "$BAD")⬢ tix error$R"; fi
 fi
 # Ollama: loaded model from /api/ps, embedders skipped, cached 10 s.
 ollama_probe() { # hard 1 s limit: a hung daemon never freezes the status line
