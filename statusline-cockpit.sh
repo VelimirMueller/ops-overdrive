@@ -169,6 +169,8 @@ cached() { # $1 = cache file, $2 = ttl s, rest = command; prints the cached or f
     cat "$f"; return
   fi
   local out; out=$("$@" 2>/dev/null)
+  # A failed probe keeps the last good value on screen (stale beats blank).
+  if [ -z "$out" ] && [ -s "$f" ]; then cat "$f"; return; fi
   # Every probe names its empty states (dual-review "none", tix "notrepo", ollama
   # "idle"/"off"), so empty output means the probe failed: never cache it.
   local tmp
@@ -184,7 +186,7 @@ level_color() { case "$1" in
   pass|ok|notrepo) echo "$OK" ;; fail|nokey|nokeys|error) echo "$BAD" ;;
   stale|partial|blocked|warn) echo "$WARN" ;; *) echo "$FAINT" ;; esac; }
 # One cache entry per checkout: md5 of the full path (CRC32 could collide).
-key=$(md5 -q -s "$cwd" 2>/dev/null || printf '%s' "$cwd" | cksum | cut -d' ' -f1)
+key=$(md5 -q -s "$cwd")   # macOS md5(1); this status line is macOS only
 l5="$(chip "$ELEV" "$SUB" "work   ")"
 DR="$HOME/.claude/tools/dual-review/dual-review.sh"
 if [ -x "$DR" ] && [ -d "$cwd" ]; then
@@ -199,6 +201,7 @@ TIX=$(command -v tix 2>/dev/null); [ -z "$TIX" ] && [ -x "$HOME/.bun/bin/tix" ] 
 if [ -n "$TIX" ] && [ -d "$cwd" ]; then
   tx=$(cd "$cwd" && cached "$CDIR/chip/cockpit-tix-$key.txt" 10 "$TIX" chip | head -1)
   split_chip "$tx"; tx_l=$lvl; tx_t=$(printf '%s' "$txt" | clean); tx_t=${tx_t/🎫/⬢}
+  # bash ERE: "\ " is an escaped space; drops the " (todo …)" queue breakdown
   [[ "$tx_t" =~ ^(.*)\ \(todo.*\)$ ]] && tx_t="${BASH_REMATCH[1]}"
   if [ -n "$tx" ]; then l5+="${sep}$(fg "$(level_color "$tx_l")")${tx_t:-⬢ tix ?}$R"
   else l5+="${sep}$(fg "$BAD")⬢ tix error$R"; fi
