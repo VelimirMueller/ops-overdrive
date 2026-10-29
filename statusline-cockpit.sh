@@ -189,8 +189,10 @@ split_chip() { # "LEVEL<TAB>TEXT" -> $lvl $txt; a line without a tab is all text
 level_color() { case "$1" in
   pass|ok|notrepo) echo "$OK" ;; fail|nokey|nokeys|error) echo "$BAD" ;;
   stale|partial|blocked|warn) echo "$WARN" ;; *) echo "$FAINT" ;; esac; }
-# One cache entry per checkout: md5 of the full path (CRC32 could collide).
-key=$(printf "%s" "$cwd" | cksum | cut -d" " -f1)   # POSIX cksum: one cache key per repo path
+# One cache entry per checkout, keyed by the POSIX cksum of the full path.
+# Contract: the Ops Cockpit Tools section (RigToolsReader) computes the same key
+# to read these files. Change both together, or its work strip goes empty.
+key=$(printf "%s" "$cwd" | cksum | cut -d" " -f1)
 l5="$(chip "$ELEV" "$SUB" "work   ")"
 DR="$HOME/.claude/tools/dual-review/dual-review.sh"
 if [ -x "$DR" ] && [ -d "$cwd" ]; then
