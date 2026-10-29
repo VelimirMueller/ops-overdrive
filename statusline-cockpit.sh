@@ -167,7 +167,7 @@ cached() { # $1 = cache file, $2 = ttl s, rest = command; prints the cached or f
   local mtime; mtime=$(date -r "$f" +%s 2>/dev/null) || mtime=""
   local now age=""; now=$(date +%s)
   [ -n "$mtime" ] && age=$(( now - mtime ))
-  if [ -n "$age" ] && [ "$age" -lt "$ttl" ]; then
+  if [ -s "$f" ] && [ -n "$age" ] && [ "$age" -lt "$ttl" ]; then
     cat "$f"; return
   fi
   local out; out=$("$@" 2>/dev/null)
