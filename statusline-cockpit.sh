@@ -162,13 +162,15 @@ CDIR="$HOME/.claude/.statusline-cache"
 clean() { jq -Rr "$TXT_DEF txt" 2>/dev/null; }
 cached() { # $1 = cache file, $2 = ttl s, rest = command; prints the cached or fresh output
   local f=$1 ttl=$2; shift 2
-  # date -r works on BSD and GNU; a failed read counts as age "now", i.e. stale.
+  # `date -r FILE` prints the file mtime on macOS (date(1) accepts a file there,
+  # verified 2026-10-29) and on GNU; a failed read gives age "now", i.e. stale.
   if [ -f "$f" ] && [ $(( $(date +%s) - $(date -r "$f" +%s 2>/dev/null || echo 0) )) -lt "$ttl" ]; then
     cat "$f"; return
   fi
   local out; out=$("$@" 2>/dev/null)
   # Empty output is a failed probe: never cache it, so the next render retries.
-  [ -n "$out" ] && mkdir -p "${f%/*}" 2>/dev/null && printf '%s\n' "$out" > "$f.$$" && mv -f "$f.$$" "$f"
+  local tmp="$f.$$.$RANDOM"
+  [ -n "$out" ] && mkdir -p "${f%/*}" 2>/dev/null && printf '%s\n' "$out" > "$tmp" && mv -f "$tmp" "$f"
   printf '%s\n' "$out"
 }
 split_chip() { # "LEVEL<TAB>TEXT" -> $lvl $txt; a line without a tab is all text, level unknown
@@ -194,14 +196,10 @@ if [ -n "$TIX" ] && [ -d "$cwd" ]; then
   [[ "$tx_t" =~ ^(.*)\ \(todo.*\)$ ]] && tx_t="${BASH_REMATCH[1]}"
   l5+="${sep}$(fg "$(level_color "$tx_l")")${tx_t:-⬢ tix ?}$R"
 fi
-# Ollama: loaded model from /api/ps (no curl), embedders skipped, cached 10 s.
-ollama_probe() {
-  exec 3<>/dev/tcp/127.0.0.1/11434 2>/dev/null || { echo off; return 0; }
-  printf 'GET /api/ps HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3
-  # Whole response, then everything after the blank line between headers and body.
-  local resp; resp=$(cat <&3)
-  exec 3>&- 3<&-
-  printf '%s' "${resp#*$'\r\n\r\n'}" | jq -r '[.models[]?.name | select(test("embed") | not)][0] // "idle"' 2>/dev/null
+# Ollama: loaded model from /api/ps, embedders skipped, cached 10 s.
+ollama_probe() { # hard 1 s limit: a hung daemon never freezes the status line
+  local body; body=$(curl -s --max-time 1 http://127.0.0.1:11434/api/ps 2>/dev/null) || { echo off; return 0; }
+  printf '%s' "$body" | jq -r '[.models[]?.name | select(test("embed") | not)][0] // "idle"' 2>/dev/null
 }
 om=$(cached "$CDIR/cockpit-ollama.txt" 10 ollama_probe | head -1 | clean)
 if [ -n "$om" ] && [ "$om" != off ]; then om=${om%:latest}; l5+="${sep}$(fg "$OK")⚡ ollama$R $(fg "$TEXT")${om%%-*}$R"
