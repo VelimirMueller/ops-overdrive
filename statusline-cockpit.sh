@@ -10,6 +10,7 @@
 #   Line 1 — WHERE:  ◇ OPS COCKPIT > model > context bar % > dir > ⎇ branch
 #   Line 3 — MCP:     code-context · rag-context · release-pilot · doc-creator · image-gen
 #   Line 4 — TOOLS:   rig · tix · dual-review · rag-vault · rag-verify (versions)
+#   Line 5 — WORK:    ⚖ dual-review gate · ⬢ tix ticket/phase · ⚡ ollama model
 #   Line 2 — CONTROL: claude auth (login / api key) > MCP mode (gateway / direct)
 #                     > guardrails (deny · ask) > 5h / 7d limits
 # Reads only small files; never ~/.claude.json (large, rewritten by Claude Code).
@@ -154,4 +155,69 @@ l4="$(chip "$ELEV" "$SUB" "tools  ")"
 l4+="$(tool "⚙ rig" "$rig_v")$(fg "$FAINT") ·$R$(tool "⬢ tix" "$tix_v")$(fg "$FAINT") ·$R$(tool "⚖ dual-review" "$dr_v")"
 l4+="$(fg "$FAINT") ·$R$(tool "⛁ rag-vault" "$vault_v")$(fg "$FAINT") ·$R$(tool "✓ rag-verify" "$verify_v")"
 
-printf '%s\n%s\n%s\n%s\n' "$l1" "$l2" "$l3" "$l4"
+# ---- line 5 — work: dual-review gate · tix ticket/phase · ollama model ----
+# Both CLIs answer "LEVEL<TAB>TEXT" (same contract as the Neon line). Their text
+# goes through the same character filter as the payload before it is printed.
+CDIR="$HOME/.claude/.statusline-cache"
+clean() { jq -Rr "$TXT_DEF txt" 2>/dev/null; }
+cached() { # $1 = cache file, $2 = ttl s, rest = command; prints the cached or fresh output
+  local f=$1 ttl=$2; shift 2
+  # `date -r FILE` prints the file mtime on macOS (date(1) accepts a file there,
+  # verified 2026-10-29) and on GNU. No mtime -> not fresh -> probe again.
+  local mtime; mtime=$(date -r "$f" +%s 2>/dev/null) || mtime=""
+  local now age=""; now=$(date +%s)
+  [ -n "$mtime" ] && age=$(( now - mtime ))
+  if [ -s "$f" ] && [ -n "$age" ] && [ "$age" -lt "$ttl" ]; then
+    cat "$f"; return
+  fi
+  local out; out=$("$@" 2>/dev/null)
+  # A failed probe keeps the last good value on screen (stale beats blank).
+  # With no cache at all an empty line goes back on purpose: the caller then
+  # shows the red "error" chip for that tool.
+  if [ -z "$out" ] && [ -s "$f" ]; then cat "$f"; return; fi
+  # Every probe names its empty states (dual-review "none", tix "notrepo", ollama
+  # "idle"/"off"), so empty output means the probe failed: never cache it.
+  local tmp
+  if [ -n "$out" ] && mkdir -p "${f%/*}" 2>/dev/null && tmp=$(mktemp "$f.XXXXXX" 2>/dev/null); then
+    printf '%s\n' "$out" > "$tmp" && mv -f "$tmp" "$f" || rm -f "$tmp"
+  fi
+  printf '%s\n' "$out"
+}
+split_chip() { # "LEVEL<TAB>TEXT" -> $lvl $txt; a line without a tab is all text, level unknown
+  case "$1" in *$'\t'*) lvl=${1%%$'\t'*}; txt=${1#*$'\t'} ;; *) lvl=unknown; txt=$1 ;; esac
+}
+level_color() { case "$1" in
+  pass|ok|notrepo) echo "$OK" ;; fail|nokey|nokeys|error) echo "$BAD" ;;
+  stale|partial|blocked|warn) echo "$WARN" ;; *) echo "$FAINT" ;; esac; }
+# One cache entry per checkout: md5 of the full path (CRC32 could collide).
+key=$(printf "%s" "$cwd" | cksum | cut -d" " -f1)   # POSIX cksum: one cache key per repo path
+l5="$(chip "$ELEV" "$SUB" "work   ")"
+DR="$HOME/.claude/tools/dual-review/dual-review.sh"
+if [ -x "$DR" ] && [ -d "$cwd" ]; then
+  dr=$(cd "$cwd" && cached "$CDIR/chip/cockpit-dr-$key.txt" 5 "$DR" --chip | head -1)
+  split_chip "$dr"; dr_l=$lvl; dr_t=$(printf '%s' "$txt" | clean)
+  if [ -n "$dr" ]; then l5+=" $(fg "$(level_color "$dr_l")")${dr_t:-⚖ review ?}$R"
+  else l5+=" $(fg "$BAD")⚖ dual-review error$R"; fi   # probe failed or printed nothing
+else
+  l5+=" $(fg "$BAD")⚖ dual-review missing$R"
+fi
+TIX=$(command -v tix 2>/dev/null); [ -z "$TIX" ] && [ -x "$HOME/.bun/bin/tix" ] && TIX="$HOME/.bun/bin/tix"
+if [ -n "$TIX" ] && [ -d "$cwd" ]; then
+  tx=$(cd "$cwd" && cached "$CDIR/chip/cockpit-tix-$key.txt" 10 "$TIX" chip | head -1)
+  split_chip "$tx"; tx_l=$lvl; tx_t=$(printf '%s' "$txt" | clean); tx_t=${tx_t/🎫/⬢}
+  # bash ERE: "\ " is an escaped space; drops the " (todo …)" queue breakdown
+  [[ "$tx_t" =~ ^(.*)\ \(todo.*\)$ ]] && tx_t="${BASH_REMATCH[1]}"
+  if [ -n "$tx" ]; then l5+="${sep}$(fg "$(level_color "$tx_l")")${tx_t:-⬢ tix ?}$R"
+  else l5+="${sep}$(fg "$BAD")⬢ tix error$R"; fi
+fi
+# Ollama: loaded model from /api/ps, embedders skipped, cached 10 s.
+ollama_probe() { # hard 1 s limit: a hung daemon never freezes the status line
+  # `local` on its own line: the `||` then sees curl's exit status (tested: port 1 -> "off").
+  local body; body=$(curl -s --max-time 1 http://127.0.0.1:11434/api/ps 2>/dev/null) || { echo off; return 0; }
+  printf '%s' "$body" | jq -r '[.models[]?.name | select(test("embed") | not)][0] // "idle"' 2>/dev/null
+}
+om=$(cached "$CDIR/cockpit-ollama.txt" 10 ollama_probe | head -1 | clean)
+if [ -n "$om" ] && [ "$om" != off ]; then om=${om%:latest}; l5+="${sep}$(fg "$OK")⚡ ollama$R $(fg "$TEXT")${om%%-*}$R"
+else l5+="${sep}$(fg "$FAINT")⚡ ollama off$R"; fi
+
+printf '%s\n%s\n%s\n%s\n%s\n' "$l1" "$l2" "$l3" "$l4" "$l5"
