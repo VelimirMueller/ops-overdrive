@@ -38,6 +38,16 @@
 # snapshot, formats numbers/durations in pure bash, and caches the rig probe and
 # the dual-review chip under ~/.claude/.statusline-cache.
 
+# Ops Cockpit panes and cmux get the cockpit status line (2026-10-29); Warp keeps
+# Neon Overdrive. STATUSLINE_STYLE=neon|cockpit forces one style.
+case "${STATUSLINE_STYLE:-}" in
+  cockpit) exec bash "$HOME/.claude/statusline-cockpit.sh" ;;
+  neon) ;;
+  *) if [ -n "${OPS_COCKPIT_PANE:-}" ] || [ -n "${CMUX_WORKSPACE_ID:-}" ]; then
+       exec bash "$HOME/.claude/statusline-cockpit.sh"
+     fi ;;
+esac
+
 input=$(cat)
 
 # jq is required for parsing the JSON payload and transcripts. Fail
