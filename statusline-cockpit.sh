@@ -46,9 +46,11 @@ fi
 if [ -n "$cwd" ]; then
   short=${cwd/#$HOME/\~}
   l1+="${sep}$(fg "$SUB")${short}$R"
-  br=$(git -C "$cwd" --no-optional-locks symbolic-ref --short -q HEAD 2>/dev/null)
+  # Repo config must not run code: no fsmonitor, hooks or untracked cache.
+  G=(git -C "$cwd" -c core.fsmonitor=false -c core.hooksPath=/dev/null -c core.untrackedCache=false --no-optional-locks)
+  br=$("${G[@]}" symbolic-ref --short -q HEAD 2>/dev/null)
   if [ -n "$br" ]; then
-    dirty=$(git -C "$cwd" --no-optional-locks status --porcelain -uno 2>/dev/null | head -1)
+    dirty=$("${G[@]}" status --porcelain -uno 2>/dev/null | head -1)
     l1+="${sep}$(fg "$ACCENT_T")⎇ ${br}$R"; [ -n "$dirty" ] && l1+="$(fg "$WARN") ●$R"
   fi
 fi
