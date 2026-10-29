@@ -15,4 +15,4 @@ image-gen	◈	MCP	pyproject:~/Desktop/Workspace/mcp-servers/vlm-image-gen	local 
 release-pilot	⚑	MCP+CLI	pyproject:~/Desktop/Workspace/mcp-servers/vlm-release-pilot	can this go live? PRs → signals → GO/HOLD → German release notes	relpilot scan|assess|notes|plan|status|log · release_scan · release_assess · release_notes · release_plan
 overdrive	⏣	CLI	overdrive	the whole setup as one versioned tool: lock, logs, trace, catalog	overdrive status · snapshot [--if-drift] · bump · trace · catalog · limits · changelog · session
 hooks	⚓	hook	overdrive	Claude Code hooks in settings.json	PreToolUse: dual-review-gate.sh, git-guard.py · SessionEnd: rag-vault-commit · SessionStart: overdrive-drift.sh
-statusline	▤	statusline	overdrive	6-line Neon Overdrive statusline, colour-synced with Warp	statusline-command.sh · chips: quota · tix phase · ⚖ review · tools · ⏣ overdrive <ver>
+statusline	▤	statusline	overdrive	6-line Neon Overdrive statusline in Warp; 2-line Ops Cockpit statusline in cockpit panes and cmux (statusline-cockpit.sh)	statusline-command.sh · chips: quota · tix phase · ⚖ review · tools · ⏣ overdrive <ver>
