@@ -22,13 +22,14 @@ TEXT="244;244;245"; SUB="161;161;170"; FAINT="113;113;122"
 ACCENT="99;102;241"; ACCENT_T="129;140;248"; OK="16;185;129"
 WARN="228;181;103"; BAD="172;65;66"; ELEV="24;24;27"
 
-IFS=$'\t' read -r model ctx cwd five seven < <(jq -r '[
+# \x1f, not a tab: read collapses empty tab-separated fields and shifts the rest.
+IFS=$'\x1f' read -r model ctx cwd five seven < <(jq -r '[
   (.model.display_name // .model.id // "claude"),
   (.context_window.used_percentage // "" | tostring),
   (.workspace.current_dir // .cwd // ""),
   (.rate_limits.five_hour.used_percentage // "" | tostring),
   (.rate_limits.seven_day.used_percentage // "" | tostring)
-] | @tsv' <<<"$input")
+] | join("\u001f")' <<<"$input")
 
 sep=" $(fg "$FAINT")│$R "
 chip() { printf '%s%s %s %s' "$(bg "$1")" "$(fg "$2")" "$3" "$R"; }
@@ -38,7 +39,7 @@ pct_color() { local p=${1%%.*}; [ -z "$p" ] && { echo "$SUB"; return; }
 # ---- line 1 ----
 l1="$(chip "$ACCENT" "$TEXT" "◇ OPS COCKPIT")"
 l1+=" $(fg "$TEXT")${model}$R"
-if [ -n "$ctx" ]; then
+if [[ "$ctx" =~ ^[0-9] ]]; then
   p=${ctx%%.*}; n=$(( p / 10 )); bar=""
   for ((i=0;i<10;i++)); do [ $i -lt $n ] && bar+="▰" || bar+="▱"; done
   l1+="${sep}$(fg "$(pct_color "$p")")${bar} ${p}%$R"
@@ -46,9 +47,11 @@ fi
 if [ -n "$cwd" ]; then
   short=${cwd/#$HOME/\~}
   l1+="${sep}$(fg "$SUB")${short}$R"
-  br=$(git -C "$cwd" --no-optional-locks symbolic-ref --short -q HEAD 2>/dev/null)
+  # Repo config must not run code: no fsmonitor, hooks or untracked cache.
+  G=(git -C "$cwd" -c core.fsmonitor=false -c core.hooksPath=/dev/null -c core.untrackedCache=false --no-optional-locks)
+  br=$("${G[@]}" symbolic-ref --short -q HEAD 2>/dev/null)
   if [ -n "$br" ]; then
-    dirty=$(git -C "$cwd" --no-optional-locks status --porcelain -uno 2>/dev/null | head -1)
+    dirty=$("${G[@]}" status --porcelain -uno 2>/dev/null | head -1)
     l1+="${sep}$(fg "$ACCENT_T")⎇ ${br}$R"; [ -n "$dirty" ] && l1+="$(fg "$WARN") ●$R"
   fi
 fi
