@@ -87,7 +87,10 @@ pl_add() { # $1 = bg "R;G;B", $2 = fg "R;G;B", $3 = text
   if [ -n "$prev_bg" ]; then
     pl_line="${pl_line}\033[48;2;$1m\033[38;2;${prev_bg}m${PL_SEP}"
   fi
-  pl_line="${pl_line}\033[48;2;$1m\033[38;2;$2m $3 "
+  # The lines go out through printf %b: a backslash or control character in
+  # chip text (tool output, git, payload) must not become an escape sequence.
+  local t=${3//\\/}; t=${t//[[:cntrl:]]/}
+  pl_line="${pl_line}\033[48;2;$1m\033[38;2;$2m $t "
   prev_bg="$1"
 }
 pl_end() {
@@ -176,26 +179,34 @@ sh_val() { # $1 = varname, $2 = shell script, $3 = key -> first `KEY="value"` / 
 # collapses runs of *whitespace* IFS characters, which would silently shift every
 # field after an empty one. A non-whitespace IFS preserves empty fields.
 US=$(printf '\x1f')
-payload=$(printf '%s' "$input" | jq -r '
-  [ (.model.display_name // .model.id // "?"),
-    (.workspace.current_dir // .cwd // "."),
-    (.transcript_path // ""),
-    (.context_window.used_percentage // ""),
-    (.context_window.context_window_size // ""),
-    (.context_window.total_input_tokens // ""),
-    (.cost.total_lines_added // ""),
-    (.cost.total_lines_removed // ""),
-    (.cost.total_duration_ms // ""),
-    (.effort.level // ""),
-    (.rate_limits.five_hour.used_percentage // ""),
-    (.rate_limits.seven_day.used_percentage // ""),
-    (.rate_limits.five_hour.resets_at // .rate_limits.seven_day.resets_at // ""),
-    (.workspace.git_worktree // ""),
-    (.pr.number // ""),
-    (.pr.review_state // ""),
-    (.rate_limits.five_hour.resets_at // ""),
-    (.rate_limits.seven_day.resets_at // "")
-  ] | map(tostring) | join("\u001f")' 2>/dev/null)
+# The payload is untrusted text. `txt` drops C0/C1 controls, DEL, backslash
+# (the lines are printed with %b) and bidi overrides. `num` lets only JSON
+# numbers through, because those fields reach $(( )), where bash would run
+# a command substitution hidden in a string. `ts` allows epoch or ISO-8601.
+TXT_DEF='def txt: tostring | explode | map(select(. >= 32 and . != 127 and . != 92 and (. < 128 or . > 159) and (. < 8206 or . > 8207) and (. < 8234 or . > 8238) and (. < 8294 or . > 8297))) | implode;'
+payload=$(printf '%s' "$input" | jq -r "$TXT_DEF"'
+  def num: if type == "number" then tostring else "" end;
+  def ts: if type == "number" then tostring
+          elif type == "string" and test("^[0-9][0-9T:.Z+-]*$") then . else "" end;
+  [ (.model.display_name // .model.id // "?" | txt),
+    (.workspace.current_dir // .cwd // "." | txt),
+    (.transcript_path // "" | txt),
+    (.context_window.used_percentage | num),
+    (.context_window.context_window_size | num),
+    (.context_window.total_input_tokens | num),
+    (.cost.total_lines_added | num),
+    (.cost.total_lines_removed | num),
+    (.cost.total_duration_ms | num),
+    (.effort.level // "" | txt),
+    (.rate_limits.five_hour.used_percentage | num),
+    (.rate_limits.seven_day.used_percentage | num),
+    (.rate_limits.five_hour.resets_at // .rate_limits.seven_day.resets_at | ts),
+    (.workspace.git_worktree // "" | txt),
+    (.pr.number | num),
+    (.pr.review_state // "" | txt),
+    (.rate_limits.five_hour.resets_at | ts),
+    (.rate_limits.seven_day.resets_at | ts)
+  ] | join("\u001f")' 2>/dev/null)
 
 IFS="$US" read -r model cwd transcript used_pct cw_size cw_in ladd ldel \
   dur_ms effort five week reset_at worktree pr_num pr_state reset_5h reset_7d <<< "$payload"
@@ -306,9 +317,14 @@ if [ -d "$cwd" ]; then
       '')                 ;;
       *)                  git_dirty=$((git_dirty + 1)) ;;
     esac
-  done < <(git --no-optional-locks -C "$cwd" status --porcelain=v2 --branch 2>/dev/null)
+  # The repo is not trusted: its config must not start fsmonitor or hook code.
+  done < <(git -C "$cwd" -c core.fsmonitor=false -c core.hooksPath=/dev/null \
+             -c core.untrackedCache=false --no-optional-locks \
+             status --porcelain=v2 --branch 2>/dev/null)
   # detached HEAD reports "(detached)" as branch.head — show the short sha instead
   [ "$git_branch" = "(detached)" ] && git_branch="${git_oid:0:7}"
+  # A branch name may hold bidi or control characters: same filter as the payload.
+  [ -n "$git_branch" ] && git_branch=$(printf '%s' "$git_branch" | jq -Rr "$TXT_DEF txt" 2>/dev/null)
 fi
 
 pl_new
