@@ -162,7 +162,8 @@ CDIR="$HOME/.claude/.statusline-cache"
 clean() { jq -Rr "$TXT_DEF txt" 2>/dev/null; }
 cached() { # $1 = cache file, $2 = ttl s, rest = command; prints the cached or fresh output
   local f=$1 ttl=$2; shift 2
-  if [ -f "$f" ] && [ $(( $(date +%s) - $(stat -f %m "$f" 2>/dev/null || echo 0) )) -lt "$ttl" ]; then
+  # date -r works on BSD and GNU; a failed read counts as age "now", i.e. stale.
+  if [ -f "$f" ] && [ $(( $(date +%s) - $(date -r "$f" +%s 2>/dev/null || echo 0) )) -lt "$ttl" ]; then
     cat "$f"; return
   fi
   local out; out=$("$@" 2>/dev/null)
@@ -193,9 +194,10 @@ fi
 ollama_probe() {
   exec 3<>/dev/tcp/127.0.0.1/11434 || return 0
   printf 'GET /api/ps HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3
-  local body="" l=""; while IFS= read -r -t 1 l <&3; do body="$l"; done; [ -n "$l" ] && body="$l"
+  # Whole response, then everything after the blank line between headers and body.
+  local resp; resp=$(cat <&3)
   exec 3>&- 3<&-
-  printf '%s' "$body" | jq -r '[.models[]?.name | select(test("embed") | not)][0] // "idle"' 2>/dev/null
+  printf '%s' "${resp#*$'\r\n\r\n'}" | jq -r '[.models[]?.name | select(test("embed") | not)][0] // "idle"' 2>/dev/null
 }
 om=$(cached "$CDIR/cockpit-ollama.txt" 10 ollama_probe | head -1 | clean)
 if [ -n "$om" ]; then om=${om%:latest}; l5+="${sep}$(fg "$OK")⚡ ollama$R $(fg "$TEXT")${om%%-*}$R"
