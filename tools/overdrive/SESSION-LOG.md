@@ -31,6 +31,29 @@ One line per event, fields separated by TAB:
 - `message`: one line. Replace newlines with `⏎` and tabs with a space, and cut it
   to 500 characters.
 
+## Structured fields (optional, since 2026-10-29)
+
+A message can carry up to four `key=value` fields. Ops Cockpit reads them to place a
+line in a workflow (ops-cockpit #225). Every field is optional, and a line without
+them stays valid: readers fall back to the free-form text.
+
+| Field | Value | Meaning |
+|---|---|---|
+| `wf=` | workflow id, e.g. `ship`, `release` | The workflow the line belongs to |
+| `step=` | step number or id, e.g. `3`, `commit-push-pr` | The step inside that workflow |
+| `state=` | `idle`, `spec`, `plan`, `build`, `review`, `ship` or `done` | The session state after this line |
+| `evt=` | `start`, `end` or `gate` | What the line marks: a step began, ended, or a gate decided |
+
+Rules:
+
+- A field is one whole space-separated token. Put it anywhere in the message, usually
+  at the end: `verdict PASS: deepseek=approved glm=approved wf=ship step=1 evt=gate`.
+- A value has 1–64 characters of `A-Z a-z 0-9 . _ : / -`. No spaces, no quotes.
+- `state=` and `evt=` values are lowercase and exactly one of the listed names.
+- Each key once per line. A reader takes the first occurrence and ignores the rest.
+- A reader ignores a field whose value breaks a rule, as if the field were absent.
+- The fields are metadata like the rest of the line: rule 4 below still applies.
+
 ## Levels
 
 | Level | Use it when | Examples |
